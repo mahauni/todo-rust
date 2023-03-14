@@ -1,6 +1,1 @@
-{
-  "done": false,
-  "task": "Agora vai funcionar",
-  "date_created": "1-1-2001",
-  "date_finished": null
-}
+{"tasks":[{"done":false,"task":"agora sim ?","date_created":"1-1-2001","date_finished":null},{"done":false,"task":"Mais um para a conta","date_created":"1-1-2001","date_finished":null},{"done":false,"task":"agora vai que eu acredito","date_created":"1-1-2001","date_finished":null}]}

@@ -6,7 +6,6 @@ use std::env::args;
 use std::io::{self, Write, BufReader, Read};
 use std::fs::File;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Task {
@@ -14,6 +13,11 @@ struct Task {
     task: String,
     date_created: String,
     date_finished: Option<String>
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Tasks {
+    tasks: Vec<Task>
 }
 
 fn help() {
@@ -27,6 +31,12 @@ fn help() {
 
 fn add() {
     let file_path = "tasks.json";
+
+    let mut buf_tasks = match get_data(file_path) {
+        Ok(v) => v,
+        Err(err) => panic!("Couldn't get the data in the file: {}", err),
+    };
+
     let mut file = match File::create(file_path) {
         Ok(f) => f,
         Err(err) => panic!("Couldn't open write-only file: {}", err),
@@ -48,14 +58,15 @@ fn add() {
 
     let task = Task { done: false, task: user_input, date_created: date, date_finished: None }; 
 
-    let task = match serde_json::to_string_pretty(&task) {
+    buf_tasks.tasks.push(task);
+        
+    let task = match serde_json::to_string(&buf_tasks) {
         Ok(v) => v,
         Err(err) => {
             println!("Couldn't parse to JSON: {}", err);
             return;
         }
     };
-
 
     if let Err(err) = file.write_all(task.as_bytes()) {
         panic!("Unable to write in the file: {}", err);
@@ -74,26 +85,24 @@ fn add() {
 
 fn read_all() {
     let file_path = "tasks.json";
-    let file = match File::open(file_path) {
-        Ok(f) => f,
-        Err(err) => {
-            panic!("Unable to open the flie: {}", err);
-        }
+
+    let tasks = match get_data(file_path) {
+        Ok(v) => v,
+        Err(err) => panic!("Couldn't get the data in the file: {}", err)
     };
 
+    println!("{:?}", tasks);
+}
+
+fn get_data(file_path: &str) -> io::Result<Tasks> {
+    let file = File::open(file_path)?;
     let mut buf_reader = BufReader::new(file);
+    let mut content: String = String::new();
+    buf_reader.read_to_string(&mut content)?;
+
+    let tasks: Tasks = serde_json::from_str(&content)?;
     
-    let mut content: Vec<u8> = Vec::new();
-
-    if let Err(err) = buf_reader.read_to_end(&mut content) {
-        panic!("Error when buffering the bytes in file: {}", err);
-    }
-
-    let s = String::from_utf8_lossy(&content);
-
-    let tasks = serde_json::from_str::<Value>(&s).unwrap();
-
-    println!("{}", tasks);
+    return Ok(tasks);
 }
 
 //unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
@@ -111,7 +120,9 @@ fn main() {
            "delete" => println!("delete function"), 
            "edit" => println!("edit function"), 
            "view" => read_all(), 
-           _ => (),
+           s => {
+               println!("TODO {}: unknown command.\nDo --help to see all the available commands.", s);
+           },
         }
     }
 }
