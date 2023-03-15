@@ -38,17 +38,13 @@ fn add() {
     };
 
     print!("Type the task you want to add: ");
-    // To make it possible to print before the scanf
-    io::stdout().flush().expect("flushed failed");
 
-    let mut user_input: String = String::new();
-    if let Err(err) = io::stdin().read_line(&mut user_input) {
-        println!("Not possible to add the task: {}", err);
-        return;
-    }
+    let user_input = match get_input() {
+        Ok(v) => v,
+        Err(err) => panic!("Could't get input out of stdin: {}", err)
+    };
 
-    let user_input = user_input.trim_end().to_string();
-
+    // Make the date automatic
     let date = "1-1-2001".to_owned();
 
     let task = Task { done: false, task: user_input, date_created: date, date_finished: None }; 
@@ -111,8 +107,58 @@ fn delete() {
     println!("Removed: {:?}", elem_rem);
 }
 
-fn upload_data(tasks: Tasks) -> io::Result<()> {
+fn edit() {
+    let mut tasks = match get_data() {
+        Ok(v) => v,
+        Err(err) => panic!("Couldn't get the data in the file: {}", err)
+    };
 
+    print!("Type the task you want to edit: ");
+
+    let user_input = match get_input() {
+        Ok(v) => v,
+        Err(err) => panic!("Couldn't get input from stdin: {}", err)
+    }; 
+
+    let index = match user_input.parse::<usize>() {
+        Ok(v) => v,
+        Err(err) => panic!("Couldn't parse to usize: {}", err)
+    };
+
+    if index > tasks.tasks.len() {
+        panic!("Index out of bounds")
+    }
+
+    let task = match tasks.tasks.get_mut(index) {
+        Some(v) => v,
+        None => {
+            println!("Item does not exist");
+            return;
+        }
+    };
+
+    // get flag | user_input on what to change about the task
+    task.done = true;
+
+    // done with changin the task
+    
+    if let Err(err) = upload_data(tasks) {
+        panic!("Couldn't upload the data to the file: {}", err)
+    };
+}
+
+fn get_input() -> io::Result<String> {
+    io::stdout().flush().expect("flushed failed");
+
+    let mut user_input: String = String::new();
+    io::stdin().read_line(&mut user_input)?;
+
+    let user_input = user_input.trim_end().to_string();
+
+    return Ok(user_input);
+}
+
+fn upload_data(tasks: Tasks) -> io::Result<()> {
     let mut file = File::create(FILE_PATH)?;
     let task = serde_json::to_string(&tasks)?;
     file.write_all(task.as_bytes())?;
@@ -144,7 +190,7 @@ fn main() {
            "help" => help(), 
            "add" => add(), 
            "delete" => delete(), 
-           "edit" => println!("edit function"), 
+           "edit" => edit(), 
            "view" => read_all(), 
            s => {
                println!("TODO {}: unknown command.\nDo --help to see all the available commands.", s);
