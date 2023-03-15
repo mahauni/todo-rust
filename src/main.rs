@@ -20,6 +20,8 @@ struct Tasks {
     tasks: Vec<Task>
 }
 
+const FILE_PATH: &str = "tasks.json";
+
 fn help() {
     println!("\nhelp\n");
 
@@ -30,16 +32,9 @@ fn help() {
 }
 
 fn add() {
-    let file_path = "tasks.json";
-
-    let mut buf_tasks = match get_data(file_path) {
+    let mut buf_tasks = match get_data() {
         Ok(v) => v,
         Err(err) => panic!("Couldn't get the data in the file: {}", err),
-    };
-
-    let mut file = match File::create(file_path) {
-        Ok(f) => f,
-        Err(err) => panic!("Couldn't open write-only file: {}", err),
     };
 
     print!("Type the task you want to add: ");
@@ -60,17 +55,9 @@ fn add() {
 
     buf_tasks.tasks.push(task);
         
-    let task = match serde_json::to_string(&buf_tasks) {
-        Ok(v) => v,
-        Err(err) => {
-            println!("Couldn't parse to JSON: {}", err);
-            return;
-        }
+    if let Err(err) = upload_data(buf_tasks) {
+        panic!("Couldn't upload the data: {}", err);
     };
-
-    if let Err(err) = file.write_all(task.as_bytes()) {
-        panic!("Unable to write in the file: {}", err);
-    }
 
 //    if let Err(err) = std::fs::write(file_path, task) {
 //        panic!("Unable to write in the file: {}", err);
@@ -84,9 +71,7 @@ fn add() {
 }
 
 fn read_all() {
-    let file_path = "tasks.json";
-
-    let tasks = match get_data(file_path) {
+    let tasks = match get_data() {
         Ok(v) => v,
         Err(err) => panic!("Couldn't get the data in the file: {}", err)
     };
@@ -94,8 +79,49 @@ fn read_all() {
     println!("{:?}", tasks);
 }
 
-fn get_data(file_path: &str) -> io::Result<Tasks> {
-    let file = File::open(file_path)?;
+fn delete() {
+    let mut tasks = match get_data() {
+        Ok(f) => f,
+        Err(err) => panic!("Couldn't get the data in the file: {}", err)
+    };
+
+    
+    print!("Type the number of the task you want to delete: ");
+    io::stdout().flush().expect("flushed failed");
+
+    let mut user_input: String = String::new();
+    if let Err(err) = io::stdin().read_line(&mut user_input) {
+        println!("Not possible to add the task: {}", err);
+        return;
+    }
+
+    let user_input = match user_input.trim_end().to_string().parse::<i32>() {
+        Ok(v) => v,
+        Err(err) => panic!("You should only input numbers: {}", err),
+    };
+
+    let elem_rem: Task;
+
+    if user_input < 0 && user_input >= tasks.tasks.len() as i32 {
+        panic!("Index out of bound");
+    } else {
+        elem_rem = tasks.tasks.remove((user_input - 1) as usize);
+    }
+
+    println!("Removed: {:?}", elem_rem);
+}
+
+fn upload_data(tasks: Tasks) -> io::Result<()> {
+
+    let mut file = File::create(FILE_PATH)?;
+    let task = serde_json::to_string(&tasks)?;
+    file.write_all(task.as_bytes())?;
+
+    return Ok(());
+}
+
+fn get_data() -> io::Result<Tasks> {
+    let file = File::open(FILE_PATH)?;
     let mut buf_reader = BufReader::new(file);
     let mut content: String = String::new();
     buf_reader.read_to_string(&mut content)?;
@@ -117,7 +143,7 @@ fn main() {
         match i.as_str() {
            "help" => help(), 
            "add" => add(), 
-           "delete" => println!("delete function"), 
+           "delete" => delete(), 
            "edit" => println!("edit function"), 
            "view" => read_all(), 
            s => {
