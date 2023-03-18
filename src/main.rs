@@ -23,7 +23,9 @@ struct Tasks {
 const FILE_PATH: &str = "tasks.json";
 
 fn help() {
-    println!("\nhelp\n");
+    println!("TODO is a tool to make To Do lists");
+    println!("\n\ncargo run -- [tag]");
+    println!("\n\nhelp\n");
 
     println!("--add \t\t\t add one task to be completed");
     println!("--edit [task]\t\t edit the task specified");
@@ -72,7 +74,15 @@ fn read_all() {
         Err(err) => panic!("Couldn't get the data in the file: {}", err)
     };
 
-    println!("{:?}", tasks);
+    for i in tasks.tasks {
+        if i.done {
+            println!("Created in: {}", i.date_created);
+            println!("[x] - {} - finished in: {}\n", i.task, i.date_finished.unwrap());
+        } else {
+            println!("Created in: {}", i.date_created);
+            println!("[ ] - {}\n", i.task);
+        }
+    } 
 }
 
 fn delete() {
@@ -138,7 +148,18 @@ fn edit() {
     };
 
     // get flag | user_input on what to change about the task
-    task.done = true;
+    println!("What do you want to edit: ");
+    let input = get_input();
+    match input {
+        Ok(s) => {
+            match s.as_str() {
+                "task" => task.task = "Changed task".to_owned(),
+                "done" => task.done = true,
+                _ => println!("Not a valid command")
+            }
+        },
+        Err(err) => panic!("Couldn't get input from stdin: {}", err)
+    }
 
     // done with changin the task
     
@@ -185,16 +206,19 @@ fn get_data() -> io::Result<Tasks> {
 //}
 
 fn main() {
-    for i in args().skip(1) {
-        match i.as_str() {
-           "help" => help(), 
-           "add" => add(), 
-           "delete" => delete(), 
-           "edit" => edit(), 
-           "view" => read_all(), 
-           s => {
-               println!("TODO {}: unknown command.\nDo --help to see all the available commands.", s);
-           },
-        }
+    match args().nth(1) {
+        Some(i) => {
+            match i.as_str() {
+                "help" => help(), 
+                "add" => add(), 
+                "delete" => delete(), 
+                "edit" => edit(), 
+                "view" => read_all(), 
+                s => {
+                    println!("TODO {}: unknown command.\nDo --help to see all the available commands.", s);
+                },
+            }
+        },
+        None => help()
     }
 }
