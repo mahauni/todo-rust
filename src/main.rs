@@ -3,6 +3,7 @@
 // Add the TUI.
 
 use std::env::args;
+use std::fmt::Display;
 use std::io::{self, Write, BufReader, Read};
 use std::fs::File;
 use serde::{Deserialize, Serialize};
@@ -18,6 +19,15 @@ struct Task {
 #[derive(Serialize, Deserialize, Debug)]
 struct Tasks {
     tasks: Vec<Task>
+}
+
+impl Display for Task {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.done {
+            return writeln!(f, "Created: {}\n[x] Task: {}\nFinished: {}", self.date_created, self.task, self.date_finished.as_ref().unwrap());
+        }
+        return writeln!(f, "Created: {}\n[ ] Task: {}", self.date_created, self.task);
+    }
 }
 
 const FILE_PATH: &str = "tasks.json";
@@ -75,13 +85,7 @@ fn read_all() {
     };
 
     for i in tasks.tasks {
-        if i.done {
-            println!("Created in: {}", i.date_created);
-            println!("[x] - {} - finished in: {}\n", i.task, i.date_finished.unwrap());
-        } else {
-            println!("Created in: {}", i.date_created);
-            println!("[ ] - {}\n", i.task);
-        }
+        println!("{}", i);
     } 
 }
 
@@ -123,43 +127,32 @@ fn edit() {
         Err(err) => panic!("Couldn't get the data in the file: {}", err)
     };
 
-    print!("Type the task you want to edit: ");
-
-    let user_input = match get_input() {
-        Ok(v) => v,
-        Err(err) => panic!("Couldn't get input from stdin: {}", err)
-    }; 
-
-    let index = match user_input.parse::<usize>() {
-        Ok(v) => v,
-        Err(err) => panic!("Couldn't parse to usize: {}", err)
+    println!("Type the index of the taks you want to edit: ");
+    let index = match get_input() {
+        Ok(v) => v.parse::<usize>().expect("Number"),
+        Err(err) => panic!("Couldn't get the input: {}", err)
     };
 
-    if index > tasks.tasks.len() {
-        panic!("Index out of bounds")
-    }
-
-    let task = match tasks.tasks.get_mut(index) {
-        Some(v) => v,
-        None => {
-            println!("Item does not exist");
-            return;
+    for (tag, value) in args().skip(2).step_by(2).zip(args().skip(3).step_by(2)) {
+        match tag.as_str() {
+            "--task" => {
+                match tasks.tasks.get_mut(index) {
+                   Some(t) => t.task = value,
+                   None => panic!("Dont have this task")
+                }
+            },
+            "--done" => {
+                let index = 2;
+                match tasks.tasks.get_mut(index) {
+                   Some(t) => t.done = value.parse::<bool>().expect("Expect here to be either false or true"),
+                   None => panic!("Dont have this task")
+                }
+            },
+            s => panic!("Unknown command {}", s)
         }
-    };
-
-    // get flag | user_input on what to change about the task
-    println!("What do you want to edit: ");
-    let input = get_input();
-    match input {
-        Ok(s) => {
-            match s.as_str() {
-                "task" => task.task = "Changed task".to_owned(),
-                "done" => task.done = true,
-                _ => println!("Not a valid command")
-            }
-        },
-        Err(err) => panic!("Couldn't get input from stdin: {}", err)
     }
+
+
 
     // done with changin the task
     
@@ -209,11 +202,11 @@ fn main() {
     match args().nth(1) {
         Some(i) => {
             match i.as_str() {
-                "help" => help(), 
-                "add" => add(), 
-                "delete" => delete(), 
-                "edit" => edit(), 
-                "view" => read_all(), 
+                "--help" => help(), 
+                "--add" => add(), 
+                "--delete" => delete(), 
+                "--edit" => edit(), 
+                "--view" => read_all(), 
                 s => {
                     println!("TODO {}: unknown command.\nDo --help to see all the available commands.", s);
                 },
