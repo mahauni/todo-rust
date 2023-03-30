@@ -41,6 +41,7 @@ fn help() {
     println!("--edit [task]\t\t edit the task specified");
     println!("--delete [task]\t\t delete the task specified");
     println!("--view \t\t\t view all the task you have");
+    println!("--done\t\t\t change the status of the task selected")
 }
 
 fn add() {
@@ -133,6 +134,7 @@ fn edit() {
         Err(err) => panic!("Couldn't get the input: {}", err)
     };
 
+    // possible to do with args().windows(2)
     for (tag, value) in args().skip(2).step_by(2).zip(args().skip(3).step_by(2)) {
         match tag.as_str() {
             "--task" => {
@@ -144,21 +146,57 @@ fn edit() {
             "--done" => {
                 let index = 2;
                 match tasks.tasks.get_mut(index) {
-                   Some(t) => t.done = value.parse::<bool>().expect("Expect here to be either false or true"),
-                   None => panic!("Dont have this task")
+                    Some(t) => { 
+                        t.done = value.parse::<bool>().expect("Expect here to be either false or true");
+                        match t.done {
+                            true => {
+                                t.date_finished = Some("2023-03-29".to_owned())
+                            },
+                            false => {
+                                t.date_finished = None;
+                            },
+                        }
+                    },
+                    None => panic!("Dont have this task")
                 }
             },
             s => panic!("Unknown command {}", s)
         }
     }
-
-
-
     // done with changin the task
     
     if let Err(err) = upload_data(tasks) {
         panic!("Couldn't upload the data to the file: {}", err)
     };
+}
+
+fn done() {
+    let mut tasks = match get_data() {
+        Ok(v) => v,
+        Err(err) => panic!("Couldn't get the data in the file: {}", err)
+    };
+
+    println!("Type the index of the taks you want to edit: ");
+    let index = match get_input() {
+        Ok(v) => v.parse::<usize>().expect("Number"),
+        Err(err) => panic!("Couldn't get the input: {}", err)
+    };
+
+    match tasks.tasks.get_mut(index) {
+        Some(t) => { 
+            match t.done {
+                false => {
+                    t.done = true;
+                    t.date_finished = Some("2023-03-29".to_owned());
+                },
+                true => {
+                    t.done = false;
+                    t.date_finished = None;
+                },
+            }
+        },
+        None => panic!("Dont have this task")
+    }
 }
 
 fn get_input() -> io::Result<String> {
@@ -202,11 +240,13 @@ fn main() {
     match args().nth(1) {
         Some(i) => {
             match i.as_str() {
+                // refactor this to be a enum to be better
                 "--help" => help(), 
                 "--add" => add(), 
                 "--delete" => delete(), 
                 "--edit" => edit(), 
                 "--view" => read_all(), 
+                "--done" => done(),
                 s => {
                     println!("TODO {}: unknown command.\nDo --help to see all the available commands.", s);
                 },
