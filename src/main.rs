@@ -45,20 +45,29 @@ fn help_main() {
     println!("--done\t\t\t change the status of the task selected")
 }
 
-fn help_add() {
+fn add_help() {
 }
 
 fn help_edit() {
-    println!("cargo run -- --id [id] [OPTIONS]")
+    println!("cargo run -- --id [id] [OPTIONS]");
+
+    println!("--id [id] \t\t\t choose the task with the selected id starting with 0");
+    println!("--task prompt \t\t\t show a prompt in the stdin to type the task to be replaced");
+    println!("--done [bool]\t\t\t change the status of the selected taks by the id");
 }
 
 fn help_delete() {
-}
+    println!("cargo run -- --id [id]");
 
-fn help_view() {
+    println!("--id [id] \t\t\t choose the task with the selected id starting with 0");
 }
 
 fn help_done() {
+    println!("cargo run -- --id [id]");
+}
+
+// make this if there is no --id, it shows all, and if it has is a filter
+fn help_view() {
 }
 
 fn add() {
@@ -67,19 +76,31 @@ fn add() {
         Err(err) => panic!("Couldn't get the data in the file: {}", err),
     };
 
+    let task: Task;
+
     // use --task to add another task
 
-    print!("Type the task you want to add: ");
+    let opt = get_flags();
 
-    let user_input = match get_input() {
-        Ok(v) => v,
-        Err(err) => panic!("Could't get input out of stdin: {}", err)
+    match opt.get("--task") {
+        Some(v) => {
+            if v != "prompt" {
+                add_help();
+                return;
+            }
+            println!("Type the task you want to replace with:");
+            let t = match get_input() {
+                Ok(v) => v,
+                Err(err) => panic!("Couldn't get user input from stdin: {}", err)
+            };
+
+            task = Task { task: t, done: false, date_created: get_date(), date_finished: None };
+        },
+        None => {
+            add_help();
+            return;
+        }
     };
-
-    // Make the date automatic
-    let date = "1-1-2001".to_owned();
-
-    let task = Task { done: false, task: user_input, date_created: date, date_finished: None }; 
 
     buf_tasks.tasks.push(task);
         
@@ -165,6 +186,9 @@ fn edit() {
         }
     };
 
+
+    // task it need to be without, because space makes the args to be another one and that is not
+    // possible, so we need to have the user to input in the terminal
     let task = match tasks.tasks.get_mut(index) {
         Some(t) => t,
         None => panic!("Task does not exist")
@@ -174,15 +198,25 @@ fn edit() {
     // so see if map has more than 1 and if we find --id, if we get both we continue, if not, we
     // panic
 
-    if let Some(t) = opt.get("--task") {
-        task.task = t.clone();
+    if let Some(v) = opt.get("--task") {
+        if v != "prompt" {
+            help_edit();
+            return;
+        }
+        println!("Type the task you want to replace with:");
+        let t = match get_input() {
+            Ok(v) => v,
+            Err(err) => panic!("Couldn't get user input from stdin: {}", err)
+        };
+
+        task.task = t;
     };
 
     if let Some(status) = opt.get("--done") {
         match status.parse::<bool>().expect("Expected to be a boolean (true or false)") {
             true => {
                 task.done = true;
-                task.date_finished = Some("2023-03-30".to_owned());
+                task.date_finished = Some(get_date());
             },
             false => {
                 task.done = false;
@@ -222,7 +256,7 @@ fn done() {
     match task.done {
         false => {
             task.done = true;
-            task.date_finished = Some("2023-03-29".to_owned());
+            task.date_finished = Some(get_date());
         },
         true => {
             task.done = false;
@@ -269,6 +303,12 @@ fn get_flags() -> HashMap<String, String> {
     }
     
     return flags;
+}
+
+fn get_date() -> String {
+
+
+    "2023-03-31".to_owned()
 }
 
 
