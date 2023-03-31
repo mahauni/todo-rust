@@ -2,6 +2,7 @@
 // without the TUI, and then when is mostly working.
 // Add the TUI.
 
+use std::collections::HashMap;
 use std::env::args;
 use std::fmt::Display;
 use std::io::{self, Write, BufReader, Read};
@@ -32,7 +33,7 @@ impl Display for Task {
 
 const FILE_PATH: &str = "tasks.json";
 
-fn help() {
+fn help_main() {
     println!("TODO is a tool to make To Do lists");
     println!("\n\ncargo run -- [tag]");
     println!("\n\nhelp\n");
@@ -42,6 +43,22 @@ fn help() {
     println!("--delete [task]\t\t delete the task specified");
     println!("--view \t\t\t view all the task you have");
     println!("--done\t\t\t change the status of the task selected")
+}
+
+fn help_add() {
+}
+
+fn help_edit() {
+    println!("cargo run -- --id [id] [OPTIONS]")
+}
+
+fn help_delete() {
+}
+
+fn help_view() {
+}
+
+fn help_done() {
 }
 
 fn add() {
@@ -96,15 +113,15 @@ fn delete() {
         Err(err) => panic!("Couldn't get the data in the file: {}", err)
     };
 
-    
-    print!("Type the number of the task you want to delete: ");
-    io::stdout().flush().expect("flushed failed");
+    let opt = get_flags(); 
 
-    let mut user_input: String = String::new();
-    if let Err(err) = io::stdin().read_line(&mut user_input) {
-        println!("Not possible to add the task: {}", err);
-        return;
-    }
+    let user_input = match opt.get("--id") {
+        Some(v) => v,
+        None => {
+            help_delete();
+            return;
+        },
+    };
 
     let user_input = match user_input.trim_end().to_string().parse::<i32>() {
         Ok(v) => v,
@@ -128,43 +145,50 @@ fn edit() {
         Err(err) => panic!("Couldn't get the data in the file: {}", err)
     };
 
-    println!("Type the index of the taks you want to edit: ");
-    let index = match get_input() {
-        Ok(v) => v.parse::<usize>().expect("Number"),
-        Err(err) => panic!("Couldn't get the input: {}", err)
+    let opt = get_flags();
+    
+    // --help first
+    if let Some(_) = opt.get("--help") {
+        help_edit();
+        return;
+    }
+
+    let index = match opt.get("--id") {
+        Some(v) => v.parse::<usize>().expect("Expected a number"),
+        None => {
+            println!("Command with few flags");
+            help_edit();
+            // panic
+            return;
+        }
     };
 
-    // possible to do with args().windows(2)
-    for (tag, value) in args().skip(2).step_by(2).zip(args().skip(3).step_by(2)) {
-        match tag.as_str() {
-            "--task" => {
-                match tasks.tasks.get_mut(index) {
-                   Some(t) => t.task = value,
-                   None => panic!("Dont have this task")
-                }
+    let task = match tasks.tasks.get_mut(index) {
+        Some(t) => t,
+        None => panic!("Task does not exist")
+    };
+
+    // this one are optional, so we need to make the id obrigatory, but the task and done optional
+    // so see if map has more than 1 and if we find --id, if we get both we continue, if not, we
+    // panic
+
+    if let Some(t) = opt.get("--task") {
+        task.task = t.clone();
+    };
+
+    if let Some(status) = opt.get("--done") {
+        match status.parse::<bool>().expect("Expected to be a boolean (true or false)") {
+            true => {
+                task.done = true;
+                task.date_finished = Some("2023-03-30".to_owned());
             },
-            "--done" => {
-                let index = 2;
-                match tasks.tasks.get_mut(index) {
-                    Some(t) => { 
-                        t.done = value.parse::<bool>().expect("Expect here to be either false or true");
-                        match t.done {
-                            true => {
-                                t.date_finished = Some("2023-03-29".to_owned())
-                            },
-                            false => {
-                                t.date_finished = None;
-                            },
-                        }
-                    },
-                    None => panic!("Dont have this task")
-                }
+            false => {
+                task.done = false;
+                task.date_finished = None;
             },
-            s => panic!("Unknown command {}", s)
         }
-    }
-    // done with changin the task
-    
+    };
+
     if let Err(err) = upload_data(tasks) {
         panic!("Couldn't upload the data to the file: {}", err)
     };
@@ -229,6 +253,17 @@ fn get_data() -> io::Result<Tasks> {
     return Ok(tasks);
 }
 
+fn get_flags() -> HashMap<String, String> {
+    let mut flags: HashMap<String, String> = HashMap::new();
+     
+    for (tag, value) in args().skip(2).step_by(2).zip(args().skip(3).step_by(2)) {
+        flags.insert(tag, value);
+    }
+    
+    return flags;
+}
+
+
 //unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
 //    ::core::slice::from_raw_parts(
 //        (p as *const T) as *const u8,
@@ -241,7 +276,7 @@ fn main() {
         Some(i) => {
             match i.as_str() {
                 // refactor this to be a enum to be better
-                "--help" => help(), 
+                "--help" => help_main(), 
                 "--add" => add(), 
                 "--delete" => delete(), 
                 "--edit" => edit(), 
@@ -252,6 +287,6 @@ fn main() {
                 },
             }
         },
-        None => help()
+        None => help_main()
     }
 }
