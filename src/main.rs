@@ -7,6 +7,7 @@ use std::env::args;
 use std::fmt::Display;
 use std::io::{self, Write, BufReader, Read};
 use std::fs::File;
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -306,9 +307,9 @@ fn get_flags() -> HashMap<String, String> {
 }
 
 fn get_date() -> String {
+    let utc = Utc::now();
 
-
-    "2023-03-31".to_owned()
+    return format!("{}",utc.format("%d/%m/%Y - %H:%M:%S"));
 }
 
 
@@ -319,7 +320,7 @@ fn get_date() -> String {
 //    )
 //}
 
-fn main() {
+fn menu() {
     match args().nth(1) {
         Some(i) => {
             match i.as_str() {
@@ -337,4 +338,8 @@ fn main() {
         },
         None => help_main()
     }
+}
+
+fn main() {
+    menu();
 }
