@@ -67,6 +67,8 @@ fn add() {
         Err(err) => panic!("Couldn't get the data in the file: {}", err),
     };
 
+    // use --task to add another task
+
     print!("Type the task you want to add: ");
 
     let user_input = match get_input() {
@@ -200,26 +202,32 @@ fn done() {
         Err(err) => panic!("Couldn't get the data in the file: {}", err)
     };
 
-    println!("Type the index of the taks you want to edit: ");
-    let index = match get_input() {
-        Ok(v) => v.parse::<usize>().expect("Number"),
-        Err(err) => panic!("Couldn't get the input: {}", err)
+    let opt = get_flags();
+
+    let index = match opt.get("--id") {
+        Some(i) => i.parse::<usize>().expect("Expected to be usize number"),
+        None => {
+            help_done();
+            return;
+        },
     };
 
-    match tasks.tasks.get_mut(index) {
-        Some(t) => { 
-            match t.done {
-                false => {
-                    t.done = true;
-                    t.date_finished = Some("2023-03-29".to_owned());
-                },
-                true => {
-                    t.done = false;
-                    t.date_finished = None;
-                },
-            }
-        },
+    let task = match tasks.tasks.get_mut(index) {
+        Some(t) => t,
         None => panic!("Dont have this task")
+    };
+
+
+    // here we are fliping the done task, so if is false, will be true and vice-versa
+    match task.done {
+        false => {
+            task.done = true;
+            task.date_finished = Some("2023-03-29".to_owned());
+        },
+        true => {
+            task.done = false;
+            task.date_finished = None;
+        },
     }
 }
 
